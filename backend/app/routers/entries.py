@@ -18,7 +18,7 @@ def create_entry(entry: EntryCreate, user_id: int = Depends(get_current_user)):
         entry_id, ts = curr.fetchone()
         conn.commit()
         print("calling openai...")
-        summary = generate_summary(entry.content)
+        summary = generate_summary(entry.content, entry.type)
         print("summary:", summary)
         save_summary(conn,user_id, entry_id, summary)
         return EntryResponse(id=entry_id, user_id=user_id, content=entry.content, type=entry.type, timestamp=ts)
