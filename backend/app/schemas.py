@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
 class EntryCreate(BaseModel):
-    user_id :  int
     content : str
     type : str
 

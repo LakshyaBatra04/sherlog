@@ -1,8 +1,12 @@
 from ..schemas import UserCreate, UserResponse, TokenResponse
 from ..database import get_connection, release_connection
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from ..services.authentication import hash_password, verify_password,create_access_token
 router = APIRouter()
+
+from fastapi.security import OAuth2PasswordRequestForm
+
+
 
 @router.post("/register" , response_model=UserResponse)
 def register_user(user : UserCreate):
@@ -31,26 +35,23 @@ def register_user(user : UserCreate):
     finally:        
         release_connection(conn)
 
-@router.post("/login")
-def login_user(user : UserCreate):
-    try :
+@router.post("/login", response_model=TokenResponse)
+def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
+    try:
         conn = get_connection()
         curr = conn.cursor()
-        curr.execute("SELECT id, password_hash FROM users WHERE email =%s",
-                     (user.email,))
+        curr.execute("SELECT id, password_hash FROM users WHERE email = %s",
+                     (form_data.username,))
         db_user = curr.fetchone()
         if not db_user:
             raise HTTPException(status_code=400, detail="Invalid email or password")
-        hashed_password = db_user[1]
-        if not verify_password(user.password, hashed_password): 
+        if not verify_password(form_data.password, db_user[1]):
             raise HTTPException(status_code=400, detail="Invalid email or password")
         token = create_access_token(db_user[0])
-        return TokenResponse(access_token=token)    
-
+        return TokenResponse(access_token=token)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         release_connection(conn)
-

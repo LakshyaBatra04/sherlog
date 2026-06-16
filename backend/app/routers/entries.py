@@ -3,23 +3,25 @@ from ..schemas import EntryCreate, EntryResponse, SummaryResponse
 from ..database import get_connection, release_connection
 from ..services.summarize import generate_summary
 from ..db_utils import save_summary
+from ..services.authentication import get_current_user
+from fastapi import Depends
 router = APIRouter()
 @router.post("/entries", response_model=EntryResponse)
-def create_entry(entry: EntryCreate):
+def create_entry(entry: EntryCreate, user_id: int = Depends(get_current_user)):
     try:
         conn = get_connection()
         curr = conn.cursor()
         curr.execute(
             "INSERT INTO entries (user_id, content, type) VALUES (%s, %s, %s) RETURNING id, timestamp",
-            (entry.user_id, entry.content, entry.type)
+            (user_id, entry.content, entry.type)
         )
         entry_id, ts = curr.fetchone()
         conn.commit()
         print("calling openai...")
         summary = generate_summary(entry.content)
         print("summary:", summary)
-        save_summary(conn,entry.user_id, entry_id, summary)
-        return EntryResponse(id=entry_id, user_id=entry.user_id, content=entry.content, type=entry.type, timestamp=ts)
+        save_summary(conn,user_id, entry_id, summary)
+        return EntryResponse(id=entry_id, user_id=user_id, content=entry.content, type=entry.type, timestamp=ts)
 
     except Exception as e:
         conn.rollback()
@@ -30,7 +32,7 @@ def create_entry(entry: EntryCreate):
 
 
 @router.get("/entries/user", response_model = list[SummaryResponse])
-def get_user_entries(user_id : int):
+def get_user_entries(user_id : int = Depends(get_current_user)):
     try:
         conn = get_connection()
         curr = conn.cursor()
@@ -55,7 +57,7 @@ def get_user_entries(user_id : int):
 
 
 @router.get("/entries/{entry_id}", response_model=SummaryResponse)
-def get_entry_summary(entry_id : int):
+def get_entry_summary(entry_id : int, user_id : int = Depends(get_current_user)):
     try:
         conn = get_connection()
         curr = conn.cursor()
