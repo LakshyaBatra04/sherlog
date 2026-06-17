@@ -17,6 +17,6 @@ def generate_summary(text: str, type : str) -> str:
                     🔜 Next: ...
                     Be concise. If a category has nothing, omit it. Never make things up — only extract what's in the entry.'''
     response = client.models.generate_content(
-        model="gemini-2.0-flash-lite",
+        model="gemini-3.5-flash",
     contents=f"{prompt}\n\nJournal entry:\n{text}"    )
     return response.text.strip()
